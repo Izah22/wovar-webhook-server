@@ -117,7 +117,13 @@ app.post('/webhook/netsuite/salesorder', express.raw({type:'*/*'}), (req,res) =>
   }
 
   let event;
-  try { event=JSON.parse(raw); } catch { return res.status(400).json({error:'Invalid JSON'}); }
+  try { 
+    event=JSON.parse(raw); 
+  } catch(e) { 
+    console.error('Raw body received:', JSON.stringify(raw.substring(0,500)));
+    console.error('Parse error:', e.message);
+    return res.status(400).json({error:'Invalid JSON', received: raw.substring(0,200)}); 
+  }
 
   const {toast} = event;
   console.log(`✅ Nieuwe SO: ${toast?.tranId} | ${toast?.customer} | €${toast?.amount} | ${toast?.channel}`);
