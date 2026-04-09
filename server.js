@@ -43,6 +43,8 @@ const verifyJWT = t => { try { const [h,b,s]=t.split('.'); if(s!==crypto.createH
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 const requireAuth = (req,res,next) => {
+  // Als SKIP_AUTH=true is ingesteld, altijd doorlaten (voor offline auth modus)
+  if (process.env.SKIP_AUTH === 'true') return next();
   const token=(req.headers.authorization||'').replace('Bearer ','') || req.query.token;
   const p=token?verifyJWT(token):null;
   if(!p) return res.status(401).json({error:'Niet ingelogd'});
