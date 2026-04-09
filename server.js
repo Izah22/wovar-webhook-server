@@ -101,8 +101,8 @@ app.get('/events', requireAuth, (req,res) => {
 });
 
 // ─── POST /webhook/netsuite/salesorder ───────────────────────────────────────
-app.post('/webhook/netsuite/salesorder', express.raw({type:'application/json'}), (req,res) => {
-  const raw  = req.body.toString();
+app.post('/webhook/netsuite/salesorder', express.raw({type:'*/*'}), (req,res) => {
+  const raw  = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : (typeof req.body === 'object' ? JSON.stringify(req.body) : String(req.body || ''));
   const sig  = req.headers['x-wovar-signature'];
 
   // Verifieer signature als aanwezig
