@@ -128,8 +128,9 @@ app.post('/webhook/netsuite/salesorder', express.raw({type:'*/*'}), (req,res) =>
   const {toast} = event;
   console.log(`✅ Nieuwe SO: ${toast?.tranId} | ${toast?.customer} | €${toast?.amount} | ${toast?.channel}`);
 
-  // Push alleen de toast data naar verbonden dashboard clients
-  const msg = JSON.stringify({ type: 'new_order', toast });
+  // Push toast + kanaaltotalen naar verbonden dashboard clients
+  const {totals} = event;
+  const msg = JSON.stringify({ type: 'new_order', toast, totals: totals || [] });
   clients.forEach(c => c.res.write(`data: ${msg}\n\n`));
 
   res.status(200).json({ received: true });
