@@ -96,6 +96,11 @@ app.post('/auth/login', (req,res) => {
   res.json({token:signJWT({username:username.toLowerCase()}),username:username.toLowerCase()});
 });
 
+// ─── In-memory cache van laatste totals ──────────────────────────────────────
+let latestTotals = [];
+let latestToast  = null;
+let latestAt     = null;
+
 // ─── SSE clients ──────────────────────────────────────────────────────────────
 const clients = new Set();
 
@@ -137,6 +142,11 @@ app.post('/webhook/netsuite/salesorder', express.raw({type:'*/*'}), (req,res) =>
 
   // Push toast + kanaaltotalen naar verbonden dashboard clients
   const {totals} = event;
+
+  // Sla op in memory cache
+  if (totals?.length > 0) { latestTotals = totals; latestAt = new Date().toISOString(); }
+  if (toast) latestToast = toast;
+
   const msg = JSON.stringify({ type: 'new_order', toast, totals: totals || [] });
   clients.forEach(c => c.res.write(`data: ${msg}\n\n`));
 
@@ -211,6 +221,16 @@ app.get('/api/totals', requireAuth, async (req,res) => {
     console.error('Totals fout:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─── GET /api/latest — geeft laatste bekende totals terug ────────────────────
+app.get('/api/latest', (req, res) => {
+  res.json({
+    totals: latestTotals,
+    toast:  latestToast,
+    at:     latestAt,
+    clients: clients.size
+  });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
