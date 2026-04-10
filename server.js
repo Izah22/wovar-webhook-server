@@ -75,7 +75,12 @@ const nsOAuthHeader = (url, method = 'GET') => {
 };
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
+app.use(cors({ 
+  origin: '*',
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.options('*', cors());
 // express.json() alleen voor niet-webhook routes
 app.use((req, res, next) => {
   if (req.path === '/webhook/netsuite/salesorder') return next();
