@@ -83,7 +83,7 @@ app.use(cors({
 app.options('*', cors());
 // express.json() alleen voor niet-webhook routes
 app.use((req, res, next) => {
-  if (req.path === '/webhook/netsuite/salesorder') return next();
+  if (req.path === '/webhook/netsuite/salesorder' || req.path === '/webhook/netsuite/orders') return next();
   express.json()(req, res, next);
 });
 
@@ -97,9 +97,10 @@ app.post('/auth/login', (req,res) => {
 });
 
 // ─── In-memory cache van laatste totals ──────────────────────────────────────
-let latestTotals = [];
-let latestToast  = null;
-let latestAt     = null;
+let latestTotals  = [];
+let latestToast   = null;
+let latestAt      = null;
+let latestOrders  = null;
 
 // ─── SSE clients ──────────────────────────────────────────────────────────────
 const clients = new Set();
@@ -221,6 +222,31 @@ app.get('/api/totals', requireAuth, async (req,res) => {
     console.error('Totals fout:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// ─── POST /webhook/netsuite/orders ───────────────────────────────────────────
+app.post('/webhook/netsuite/orders', express.raw({type:'*/*'}), (req,res) => {
+  const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : (typeof req.body === 'object' ? JSON.stringify(req.body) : String(req.body || ''));
+  const sig = req.headers['x-wovar-signature'];
+
+  if (sig) {
+    const exp = `sha256=${crypto.createHmac('sha256',WEBHOOK_SECRET).update(raw).digest('hex')}`;
+    try { if(!crypto.timingSafeEqual(Buffer.from(sig),Buffer.from(exp))) return res.status(401).json({error:'Invalid signature'}); }
+    catch { return res.status(401).json({error:'Invalid signature'}); }
+  }
+
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(e) { return res.status(400).json({error:'Invalid JSON'}); }
+
+  latestOrders = data;
+  console.log(`✅ Orders data ontvangen: ${data.days?.length} dag(en)`);
+  res.status(200).json({ received: true });
+});
+
+// ─── GET /api/orders ─────────────────────────────────────────────────────────
+app.get('/api/orders', requireAuth, (req,res) => {
+  res.json({ orders: latestOrders });
 });
 
 // ─── GET /api/latest — geeft laatste bekende totals terug ────────────────────
